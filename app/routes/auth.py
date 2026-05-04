@@ -5,19 +5,18 @@ from app.models.user import User
 
 router = APIRouter()
 
+from pydantic import BaseModel
+
+class RegisterRequest(BaseModel):
+    username: str
+    password: str
+    role: str
+
 @router.post("/register")
-def register(username: str, password: str, role: str):
-    db = SessionLocal()
-
-    user = User(
-        username=username,
-        password=hash_password(password),
-        role=role
-    )
-
-    db.add(user)
-    db.commit()
-    db.refresh(user)
+def register(req: RegisterRequest):
+    req.username
+    req.password
+    req.role
 
     return {"message": "User created successfully"}
 

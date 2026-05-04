@@ -6,6 +6,11 @@ app = FastAPI()
 def home():
     return {"message": "LeaveMe API running 🚀"}
 
+from app.database import Base, engine
+from app.models.user import User
+
+Base.metadata.create_all(bind=engine)
+
 from fastapi import FastAPI
 from app.routes import auth
 
