@@ -1,18 +1,42 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
+from sqlalchemy.orm import Session
+
 from app.auth import hash_password, verify_password
 from app.database import SessionLocal
 from app.models.user import User
 
 router = APIRouter()
 
-@router.post("/register")
-def register(username: str, password: str, role: str):
+
+def get_db():
     db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+class RegisterRequest(BaseModel):
+    username: str
+    password: str
+    role: str
+
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+@router.post("/register")
+def register(req: RegisterRequest, db: Session = Depends(get_db)):
+    existing_user = db.query(User).filter(User.username == req.username).first()
+
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Username already exists")
 
     user = User(
-        username=username,
-        password=hash_password(password),
-        role=role
+        username=req.username,
+        password=hash_password(req.password),
+        role=req.role
     )
 
     db.add(user)
@@ -22,13 +46,11 @@ def register(username: str, password: str, role: str):
     return {"message": "User created successfully"}
 
 @router.post("/login")
-def login(username: str, password: str):
-    db = SessionLocal()
+def login(req: LoginRequest, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.username == req.username).first()
 
-    user = db.query(User).filter(User.username == username).first()
-
-    if not user or not verify_password(password, user.password):
-        return {"error": "Invalid credentials"}
+    if not user or not verify_password(req.password, user.password):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
 
     return {
         "message": "Login successful",
