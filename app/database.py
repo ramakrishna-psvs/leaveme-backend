@@ -4,10 +4,14 @@ import os
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 
-if DATABASE_URL and DATABASE_URL.startswith("postgresql://"):
+
+if not DATABASE_URL:
+    raise ValueError("DATABASE_URL is not set")
+
+if DATABASE_URL.startswith("postgresql://"):
     DATABASE_URL = DATABASE_URL.replace(
         "postgresql://",
-        "postgresql+psycopg2://"
+        "postgresql+psycopg://"
     )
 
 engine = create_engine(DATABASE_URL)
