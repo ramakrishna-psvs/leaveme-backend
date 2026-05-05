@@ -5,8 +5,11 @@ from sqlalchemy.orm import Session
 from app.auth import hash_password, verify_password
 from app.database import SessionLocal
 from app.models.user import User
+from app.jwt import create_access_token
+from app.dependencies import get_current_user
 
 router = APIRouter()
+
 
 
 def get_db():
@@ -15,6 +18,8 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
 
 class RegisterRequest(BaseModel):
     username: str
@@ -25,6 +30,7 @@ class RegisterRequest(BaseModel):
 class LoginRequest(BaseModel):
     username: str
     password: str
+
 
 @router.post("/register")
 def register(req: RegisterRequest, db: Session = Depends(get_db)):
@@ -45,6 +51,7 @@ def register(req: RegisterRequest, db: Session = Depends(get_db)):
 
     return {"message": "User created successfully"}
 
+
 @router.post("/login")
 def login(req: LoginRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.username == req.username).first()
@@ -52,7 +59,17 @@ def login(req: LoginRequest, db: Session = Depends(get_db)):
     if not user or not verify_password(req.password, user.password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
+    token = create_access_token({
+        "user_id": user.id,
+        "role": user.role
+    })
+
     return {
-        "message": "Login successful",
+        "access_token": token,
+        "token_type": "bearer",
         "role": user.role
     }
+
+@router.get("/me")
+def me(user=Depends(get_current_user)):
+    return user
