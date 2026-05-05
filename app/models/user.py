@@ -11,5 +11,16 @@ class User(Base):
     password = Column(String, nullable=False)
     role = Column(String, nullable=False)
 
-    
-    leaves = relationship("LeaveRequest", back_populates="user")
+    # Leaves created by this user
+    leaves = relationship(
+        "LeaveRequest",
+        foreign_keys="LeaveRequest.user_id",
+        back_populates="user"
+    )
+
+    # Leaves approved by this user (employer side)
+    approved_leaves = relationship(
+        "LeaveRequest",
+        foreign_keys="LeaveRequest.approved_by",
+        back_populates="approver"
+    )
