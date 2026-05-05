@@ -18,13 +18,10 @@ class LeaveRequest(Base):
 
     # Status tracking
     status = Column(String, default="pending")  
-    # pending | approved | rejected
 
-    # Who approved/rejected it (employer)
     approved_by = Column(Integer, ForeignKey("users.id"), nullable=True)
 
-    # 🔥 RELATIONSHIPS (IMPORTANT FIX)
-
+   
     user = relationship(
         "User",
         foreign_keys=[user_id],
@@ -35,4 +32,3 @@ class LeaveRequest(Base):
         "User",
         foreign_keys=[approved_by]
     )
-    

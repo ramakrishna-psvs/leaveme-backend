@@ -1,7 +1,8 @@
 from fastapi import FastAPI
 from app.routes import auth
 from app.database import Base, engine
-from app.models.user import User,leave  
+from app.models.user import User
+from app.models.leave import LeaveRequest 
 
 app = FastAPI()
 
