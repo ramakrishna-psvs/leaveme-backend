@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from app.database import SessionLocal
 from app.models.leave import LeaveRequest
 from app.schemas.leave import LeaveCreate
-from app.auth import get_current_user  # we assume you already have JWT working
+from app.dependencies import get_current_user
 
 router = APIRouter(prefix="/leave", tags=["Leave"])
 
@@ -17,7 +17,7 @@ def get_db():
         db.close()
 
 
-# 🔹 1. Employee: create leave request
+# 🔹 1. Create leave request (Employee)
 @router.post("/request")
 def create_leave(
     req: LeaveCreate,
@@ -36,20 +36,38 @@ def create_leave(
     db.commit()
     db.refresh(leave)
 
-    return {"message": "Leave request submitted", "id": leave.id}
+    return {
+        "message": "Leave request submitted",
+        "leave": {
+            "id": leave.id,
+            "status": leave.status
+        }
+    }
 
 
-# 🔹 2. Employee: view own leaves
+# 🔹 2. Get my leaves (Employee)
 @router.get("/my")
 def my_leaves(
     db: Session = Depends(get_db),
     user=Depends(get_current_user)
 ):
-    leaves = db.query(LeaveRequest).filter(LeaveRequest.user_id == user.id).all()
-    return leaves
+    leaves = db.query(LeaveRequest).filter(
+        LeaveRequest.user_id == user.id
+    ).all()
+
+    return [
+        {
+            "id": l.id,
+            "reason": l.reason,
+            "start_date": l.start_date,
+            "end_date": l.end_date,
+            "status": l.status
+        }
+        for l in leaves
+    ]
 
 
-# 🔹 3. Employer: view all leaves
+# 🔹 3. Get all leaves (Employer)
 @router.get("/all")
 def all_leaves(
     db: Session = Depends(get_db),
@@ -58,21 +76,33 @@ def all_leaves(
     if user.role != "employer":
         raise HTTPException(status_code=403, detail="Not allowed")
 
-    return db.query(LeaveRequest).all()
+    leaves = db.query(LeaveRequest).all()
+
+    return [
+        {
+            "id": l.id,
+            "user_id": l.user_id,
+            "reason": l.reason,
+            "status": l.status
+        }
+        for l in leaves
+    ]
 
 
-# 🔹 4. Employer: approve/reject
+# 🔹 4. Approve / Reject leave (Employer)
 @router.post("/{leave_id}/action")
 def update_leave(
     leave_id: int,
-    action: str,  # "approved" or "rejected"
+    action: str,
     db: Session = Depends(get_db),
     user=Depends(get_current_user)
 ):
     if user.role != "employer":
         raise HTTPException(status_code=403, detail="Not allowed")
 
-    leave = db.query(LeaveRequest).filter(LeaveRequest.id == leave_id).first()
+    leave = db.query(LeaveRequest).filter(
+        LeaveRequest.id == leave_id
+    ).first()
 
     if not leave:
         raise HTTPException(status_code=404, detail="Leave not found")
@@ -86,4 +116,8 @@ def update_leave(
     db.commit()
     db.refresh(leave)
 
-    return {"message": f"Leave {action}"}
+    return {
+        "message": f"Leave {action}",
+        "id": leave.id,
+        "status": leave.status
+    }
