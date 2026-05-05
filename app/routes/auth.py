@@ -2,16 +2,17 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.auth import hash_password, verify_password
+from app.auth import hash_password, verify_password, get_current_user
 from app.database import SessionLocal
 from app.models.user import User
 from app.jwt import create_access_token
-from app.dependencies import get_current_user
 
 router = APIRouter()
 
 
-
+# -----------------------
+# DB dependency
+# -----------------------
 def get_db():
     db = SessionLocal()
     try:
@@ -20,7 +21,9 @@ def get_db():
         db.close()
 
 
-
+# -----------------------
+# Schemas
+# -----------------------
 class RegisterRequest(BaseModel):
     username: str
     password: str
@@ -32,6 +35,9 @@ class LoginRequest(BaseModel):
     password: str
 
 
+# -----------------------
+# Register
+# -----------------------
 @router.post("/register")
 def register(req: RegisterRequest, db: Session = Depends(get_db)):
     existing_user = db.query(User).filter(User.username == req.username).first()
@@ -52,6 +58,9 @@ def register(req: RegisterRequest, db: Session = Depends(get_db)):
     return {"message": "User created successfully"}
 
 
+# -----------------------
+# Login
+# -----------------------
 @router.post("/login")
 def login(req: LoginRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.username == req.username).first()
@@ -70,6 +79,15 @@ def login(req: LoginRequest, db: Session = Depends(get_db)):
         "role": user.role
     }
 
+
+# -----------------------
+# Protected route
+# -----------------------
 @router.get("/me")
 def me(user=Depends(get_current_user)):
-    return user
+    return {
+        "id": user.id,
+        "username": user.username,
+        "role": user.role
+    }
+
